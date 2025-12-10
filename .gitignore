@@ -1,0 +1,47 @@
+# -------------------------------
+# Python Cache & Artifacts
+# -------------------------------
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# -------------------------------
+# PyInstaller / Build Artifacts
+# -------------------------------
+build/
+dist/
+*.spec
+
+# Jika ada file log sementara
+*.log
+
+# -------------------------------
+# Editor / IDE
+# -------------------------------
+.vscode/
+.idea/
+
+# -------------------------------
+# OS Generated Files
+# -------------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------------
+# Other Temporary Files
+# -------------------------------
+*.tmp
+*.temp
+
+# Jika memakai Jupyter (opsional)
+.ipynb_checkpoints/
+
+# Jika ada file ZIP otomatis
+*.zip
