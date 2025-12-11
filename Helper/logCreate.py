@@ -3,7 +3,7 @@ import os
 
 class LogCreate:
     def __init__(self, process_name="UnknownProcess", detail="", level="INFO"):
-        self.log_path = "../Logs/app.log"
+        self.log_path = "Logs/app.log"
 
         # Pastikan folder Log ada
         os.makedirs(os.path.dirname(self.log_path), exist_ok=True)

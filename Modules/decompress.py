@@ -5,6 +5,10 @@ import tarfile
 import os
 import threading
 
+# IMPORT LogCreate
+from Helper.logCreate import LogCreate  # Sesuaikan path jika berbeda
+
+
 class Decompress(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -39,7 +43,7 @@ class Decompress(ctk.CTkFrame):
         ctk.CTkButton(self, text="Start Decompression", width=160, command=self.start_decompression).grid(
             row=10, column=0, columnspan=2, pady=40
         )
-        
+    
     # ===== METHODS =====
 
     def browse_source(self):
@@ -91,37 +95,52 @@ class Decompress(ctk.CTkFrame):
         ctk.CTkButton(err, text="OK", command=err.destroy).pack(pady=10)
     
     # ============ MAIN DECOMPRESSION LOGIC ============
-    
+
     def decompress_file(self, source, output):
         """Decompress single file from .gz to original file."""
         filename = os.path.basename(source)
         dest = os.path.join(output, filename[:-3])
 
+        LogCreate("DecompressModule", f"Decompressing single file: {source} → {dest}")
+
         with gzip.open(source, "rb") as gz_in:
             with open(dest, "wb") as dest_file:
                 dest_file.write(gz_in.read())
+
+        LogCreate("DecompressModule", f"File decompression completed: {dest}", level="SUCCESS")
     
     def decompress_folder(self, source, output):
         """Decompress TAR.GZ to folder."""
         folder_name = os.path.basename(source)
         tar_path = os.path.join(output, folder_name[:-7])
 
+        LogCreate("DecompressModule", f"Extracting TAR.GZ: {source} → {tar_path}")
+
         with tarfile.open(source, "r:gz") as tar:
             tar.extractall(path=tar_path)
+
+        LogCreate("DecompressModule", f"Folder extracted successfully: {tar_path}", level="SUCCESS")
     
     def decompress_process(self):
         source = self.entry_source.get()
         output = self.entry_output.get()
 
+        LogCreate("DecompressModule", f"Decompression started. Source={source}, Output={output}")
+
         try:
-            if "tar.gz" in source:
+            if source.endswith(".tar.gz"):
+                LogCreate("DecompressModule", "Mode: TAR.GZ Folder Decompression")
                 self.decompress_folder(source, output)
             else:
+                LogCreate("DecompressModule", "Mode: Single .GZ File Decompression")
                 self.decompress_file(source, output)
+
+            LogCreate("DecompressModule", "Decompression finished successfully", level="SUCCESS")
 
             self.after(0, self.show_finish_popup)
 
         except Exception as e:
+            LogCreate("DecompressModule", f"Error: {str(e)}", level="ERROR")
             self.after(0, lambda: self.show_error_popup(str(e)))
     
     def start_decompression(self):

@@ -7,6 +7,11 @@ import gzip
 import shutil
 import tempfile
 
+# IMPORT LOGGING
+from Helper.logCreate import LogCreate
+import threading
+
+
 class TransferData(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -81,7 +86,6 @@ class TransferData(ctk.CTkFrame):
             font=("Arial", 14)
         ).pack(pady=20)
 
-        # Pastikan popup selalu di atas
         self.win_processing.attributes("-topmost", True)
 
     def show_success_window(self):
@@ -129,35 +133,44 @@ class TransferData(ctk.CTkFrame):
 
     # SEND DATA METHOD
     def sendData(self):
+        # Jalankan proses di thread terpisah agar GUI tidak freeze
+        threading.Thread(target=self.send_process).start()
+
+    def send_process(self):
         HOST = self.entry_ip.get().strip()
         PORT = self.entry_port.get().strip()
         FILEPATH = self.entry_file.get().strip()
 
-        # Validasi
+        LogCreate("TransferModule", "Initializing data transfer...")
+
+        # VALIDATION
         if not HOST or not PORT or not FILEPATH:
-            self.show_error_window("IP, Port, dan File wajib diisi!")
+            self.after(0, lambda: self.show_error_window("IP, Port, dan File wajib diisi!"))
+            LogCreate("TransferModule", "Validation failed: Missing IP/Port/File", level="ERROR")
             return
-        
+
         if not os.path.exists(FILEPATH):
-            self.show_error_window("File tidak ditemukan!")
+            self.after(0, lambda: self.show_error_window("File tidak ditemukan!"))
+            LogCreate("TransferModule", f"File not found: {FILEPATH}", level="ERROR")
             return
 
         try:
             PORT = int(PORT)
         except:
-            self.show_error_window("Port harus berupa angka!")
+            self.after(0, lambda: self.show_error_window("Port harus berupa angka!"))
+            LogCreate("TransferModule", f"Invalid port number: {PORT}", level="ERROR")
             return
 
-        # Tampilkan popup processing
-        self.show_processing_window()
-        self.update()
+        # Show loading popup safely in main thread
+        self.after(0, self.show_processing_window)
 
-        # CEK APAKAH FILE SUDAH GZIP (.gz)
+        # CHECK IF ALREADY GZIPPED
         if FILEPATH.lower().endswith(".gz"):
+            LogCreate("TransferModule", f"File already compressed (.gz): {FILEPATH}")
             file_to_send = FILEPATH
             nama_file = os.path.basename(FILEPATH)
-
         else:
+            LogCreate("TransferModule", f"Compressing file before sending: {FILEPATH}")
             temp_dir = tempfile.gettempdir()
             nama_file = os.path.basename(FILEPATH) + ".gz"
             file_to_send = os.path.join(temp_dir, nama_file)
@@ -165,43 +178,50 @@ class TransferData(ctk.CTkFrame):
             try:
                 with open(FILEPATH, "rb") as src, gzip.open(file_to_send, "wb") as dst:
                     shutil.copyfileobj(src, dst)
+                LogCreate("TransferModule", f"Temporary gz file created: {file_to_send}")
+
             except Exception as e:
-                self.win_processing.destroy()
-                self.show_error_window(f"Gagal mengkompres file:\n{e}")
+                self.after(0, lambda: self.show_error_window(f"Gagal mengkompres file:\n{e}"))
+                LogCreate("TransferModule", f"Compression failed: {e}", level="ERROR")
                 return
 
-        # MULAI PROSES PENGIRIMAN
+        # BEGIN TRANSFER PROCESS
         try:
+            LogCreate("TransferModule", f"Connecting to {HOST}:{PORT}")
+
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((HOST, PORT))
 
+            LogCreate("TransferModule", f"Connected to server. Sending filename: {nama_file}")
+
             s.sendall((nama_file + "\n").encode("utf-8"))
+
+            total_sent = 0
+            file_size = os.path.getsize(file_to_send)
 
             with open(file_to_send, "rb") as f:
                 while True:
                     chunk = f.read(1024)
                     if not chunk:
                         break
+
                     s.sendall(chunk)
+                    total_sent += len(chunk)
 
-            print("Pengiriman selesai")
+            LogCreate("TransferModule", f"Transfer completed. Bytes sent: {total_sent}/{file_size}", level="SUCCESS")
 
-            # Tutup processing window
-            if hasattr(self, "win_processing"):
-                self.win_processing.destroy()
-
-            # Tampilkan Success Window
-            self.show_success_window()
+            # Close popup
+            self.after(0, lambda: self.win_processing.destroy())
+            self.after(0, self.show_success_window)
 
         except Exception as e:
-            if hasattr(self, "win_processing"):
-                self.win_processing.destroy()
-
-            # Tampilkan Error Window
-            self.show_error_window(f"Gagal mengirim data:\n{e}")
+            LogCreate("TransferModule", f"Transfer failed: {e}", level="ERROR")
+            self.after(0, lambda: self.win_processing.destroy())
+            self.after(0, lambda: self.show_error_window(f"Gagal mengirim data:\n{e}"))
 
         finally:
             try:
                 s.close()
+                LogCreate("TransferModule", "Socket closed")
             except:
-                pass
+                LogCreate("TransferModule", "Socket failed to close", level="ERROR")
