@@ -39,9 +39,21 @@ class LogManager(ctk.CTkFrame):
         ctk.CTkButton(self, text="View Log", width=160, command=self.viewLog).grid(
             row=10, column=2, columnspan=1, sticky="w", padx=50
         )
+    
     def getLogs(self):
         log_dir = Path("Logs")
-        return [str(file.resolve()) for file in log_dir.iterdir() if file.is_file()]
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        app_log = log_dir / "app.log"
+        if not app_log.exists():
+            app_log.touch(encoding="utf-8")
+
+        return [
+            str(file.resolve())
+            for file in log_dir.iterdir()
+            if file.is_file()
+        ]
+
     
     def viewLog(self):
         selected_log = self.log_switch.get()
