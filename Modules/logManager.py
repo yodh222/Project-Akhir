@@ -1,9 +1,7 @@
-from ctypes import Array
 import customtkinter as ctk
 from pathlib import Path
 import traceback
 import gzip
-import io
 import os
 import traceback
 import threading
